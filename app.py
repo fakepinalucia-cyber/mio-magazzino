@@ -20,6 +20,13 @@ st.title("📦 Gestione Magazzino")
 
 try:
     sh = connect_to_sheet()
-    # ... qui metti il codice per leggere i dati e l'interfaccia ...
+    st.success("Connessione OK!") # <--- Aggiungi questa
+    
+    # Prova a leggere i dati e stampali "grezzi"
+    data = sh.get_all_records()
+    st.write("Dati letti dal foglio:", data) # <--- Aggiungi questa
+    
+except Exception as e:
+    st.error(f"Errore: {e}")
 except Exception as e:
     st.error(f"Errore di configurazione: {e}")
