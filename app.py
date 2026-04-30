@@ -63,7 +63,21 @@ try:
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # NUOVO: A. AGGIUNGI RAPIDAMENTE ALLA SPESA UFFICIO
+        # A. SEGNALA COME ACQUISTATO (Rimuove dalla spesa)
+        with st.sidebar.expander("🛒 Segna come Acquistato"):
+            df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
+            if not df_spesa.empty:
+                lista_spesa = df_spesa['Nome'].tolist()
+                prod_da_rimuovere = st.selectbox("Seleziona prodotto acquistato", lista_spesa)
+                if st.button("Rimuovi dalla Lista"):
+                    idx_del = df[df['Nome'] == prod_da_rimuovere].index[0] + 2
+                    sh.delete_rows(int(idx_del))
+                    st.success("Prodotto acquistato e rimosso!")
+                    st.rerun()
+            else:
+                st.info("Nessun prodotto nella lista spesa.")
+
+        # B. AGGIUNGI RAPIDAMENTE ALLA SPESA UFFICIO
         with st.sidebar.expander("🛒 Aggiungi alla Spesa Ufficio"):
             with st.form("spesa_form"):
                 n_nome_spesa = st.text_input("Nome del prodotto mancante")
@@ -74,7 +88,7 @@ try:
                     st.success("Prodotto aggiunto alla spesa!")
                     st.rerun()
 
-        # B. AGGIORNA QUANTITÀ (CARICO/SCARICO)
+        # C. AGGIORNA QUANTITÀ (CARICO/SCARICO)
         with st.sidebar.expander("🔄 Carico/Scarico Merce"):
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
@@ -96,7 +110,7 @@ try:
                     st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                     st.rerun()
 
-        # C. AGGIUNGI NUOVO ARTICOLO
+        # D. AGGIUNGI NUOVO ARTICOLO
         with st.sidebar.expander("➕ Nuovo Articolo"):
             with st.form("add_form"):
                 n_cat = st.selectbox("Categoria", CATEGORIE)
@@ -109,7 +123,7 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # D. ELIMINA ARTICOLO
+        # E. ELIMINA ARTICOLO
         with st.sidebar.expander("🗑️ Elimina Prodotto"):
             prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti, key="del_box")
             if st.button("Rimuovi Definitivamente"):
