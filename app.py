@@ -2,9 +2,22 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
+import base64
 
-# URL del tuo logo
-LOGO_URL = "https://www.lenacustica.it/wp-content/uploads/2019/12/logo-lenacustica-300x70.png"
+# Funzione per convertire il file SVG in base64 per mostrarlo correttamente in Streamlit
+def render_svg(svg_file_path):
+    with open(svg_file_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+    b64 = base64.b64encode(svg_content.encode("utf-8")).decode("utf-8")
+    html = f'<img src="data:image/svg+xml;base64,{b64}" width="250">'
+    return html
+
+def render_svg_sidebar(svg_file_path):
+    with open(svg_file_path, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+    b64 = base64.b64encode(svg_content.encode("utf-8")).decode("utf-8")
+    html = f'<img src="data:image/svg+xml;base64,{b64}" width="180">'
+    return html
 
 # 1. CONNESSIONE
 def connect_to_sheet():
@@ -14,11 +27,14 @@ def connect_to_sheet():
     client = gspread.authorize(creds)
     return client.open("Dati_Magazzino").sheet1
 
-# Configurazione pagina con il tuo logo come icona tab
-st.set_page_config(page_title="Lenacustica - Magazzino", page_icon=LOGO_URL, layout="wide")
+st.set_page_config(page_title="Lenacustica - Magazzino", page_icon="⚙️", layout="wide")
 
-# Visualizzazione Logo e Titolo
-st.image(LOGO_URL, width=250)
+# Visualizzazione Logo SVG in cima
+try:
+    st.markdown(render_svg("logo.svg"), unsafe_allow_html=True)
+except FileNotFoundError:
+    st.warning("⚠️ File 'logo.svg' non trovato nella cartella del progetto. Carica il file nella stessa cartella dello script.")
+
 st.title("Gestione Magazzino")
 
 # Categorie (inclusa Spesa Ufficio)
@@ -67,10 +83,14 @@ try:
                     st.info(f"Nessun prodotto nella categoria {cat}")
 
         # --- SIDEBAR: PANNELLO DI CONTROLLO ---
-        st.sidebar.image(LOGO_URL, width=200) # Logo anche nella sidebar
+        try:
+            st.sidebar.markdown(render_svg_sidebar("logo.svg"), unsafe_allow_html=True)
+        except FileNotFoundError:
+            st.sidebar.warning("⚠️ Logo non trovato.")
+            
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # 1. GESTIONE SPESA UFFICIO (Unificato come richiesto)
+        # 1. GESTIONE SPESA UFFICIO
         with st.sidebar.expander("🛒 Gestione Spesa Ufficio"):
             st.write("##### 🛒 Rimuovi prodotto acquistato")
             df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
@@ -95,7 +115,7 @@ try:
                     st.success("Aggiunto alla spesa!")
                     st.rerun()
 
-        # 2. AGGIORNA QUANTITÀ (CARICO/SCARICO)
+        # 2. AGGIORNA QUANTITÀ
         with st.sidebar.expander("🔄 Carico/Scarico Merce"):
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
