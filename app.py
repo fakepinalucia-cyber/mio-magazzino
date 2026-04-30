@@ -63,82 +63,73 @@ try:
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
         
-        # Unico menu a tendina principale
-        scelta_azione = st.sidebar.selectbox("Scegli un'operazione", [
-            "🔄 Carico/Scarico Merce",
-            "➕ Nuovo Articolo",
-            "🛒 Gestisci Spesa Ufficio",
-            "🗑️ Elimina Prodotto"
-        ])
-
-        # Azione 1: Carico / Scarico Merce
-        if scelta_azione == "🔄 Carico/Scarico Merce":
-            lista_prodotti = df['Nome'].tolist()
-            prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
-            azione = st.radio("Operazione", ["Aggiungi", "Sottrai"])
-            quantita_var = st.number_input("Quantità da variare", min_value=1, step=1)
+        # 1. Carico/Scarico Merce
+        st.sidebar.subheader("🔄 Carico/Scarico Merce")
+        prod_carico = st.sidebar.selectbox("Seleziona Prodotto", df['Nome'].tolist(), key="c_prod")
+        azione_carico = st.sidebar.radio("Operazione", ["Aggiungi", "Sottrai"], key="c_azione")
+        qnt_carico = st.sidebar.number_input("Quantità da variare", min_value=1, step=1, key="c_qnt")
+        
+        if st.sidebar.button("Conferma Movimento", key="c_btn"):
+            idx = df[df['Nome'] == prod_carico].index[0]
+            qty_attuale = int(df.at[idx, 'Quantità'])
+            riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
             
-            if st.button("Conferma Movimento"):
-                idx = df[df['Nome'] == prod_scelto].index[0]
-                qty_attuale = int(df.at[idx, 'Quantità'])
-                riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
-                
-                nuova_qty = qty_attuale + quantita_var if azione == "Aggiungi" else qty_attuale - quantita_var
-                
-                if nuova_qty < 0:
-                    st.error("⚠️ Errore: Scorte insufficienti!")
-                else:
-                    sh.update_cell(riga, 3, nuova_qty)
-                    st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
-                    st.rerun()
-
-        # Azione 2: Nuovo Articolo
-        elif scelta_azione == "➕ Nuovo Articolo":
-            with st.form("add_form"):
-                n_cat = st.selectbox("Categoria", CATEGORIE)
-                n_nome = st.text_input("Nome Prodotto")
-                n_qty = st.number_input("Quantità Iniziale", min_value=0)
-                
-                if st.form_submit_button("Salva nel Database"):
-                    sh.append_row([n_cat, n_nome, n_qty])
-                    st.success("Prodotto registrato!")
-                    st.rerun()
-
-        # Azione 3: Gestisci Spesa Ufficio (struttura identica al Carico/Scarico)
-        elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
-            lista_prodotti = df['Nome'].tolist()
-            prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
+            nuova_qty = qty_attuale + qnt_carico if azione_carico == "Aggiungi" else qty_attuale - qnt_carico
             
-            azione = st.radio("Operazione", ["Aggiungi", "Rimuovi"])
-            quantita = st.number_input("Quantità", min_value=1, value=1, step=1)
-            
-            if st.button("Conferma Operazione"):
-                if azione == "Aggiungi":
-                    sh.append_row(["Spesa Ufficio", prod_scelto, int(quantita)])
-                    st.success(f"Prodotto '{prod_scelto}' aggiunto alla spesa!")
-                    st.rerun()
-                else: # Rimuovi
-                    df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-                    match = df_spesa[df_spesa['Nome'] == prod_scelto]
-                    
-                    if not match.empty:
-                        idx_del = match.index[0] + 2
-                        sh.delete_rows(int(idx_del))
-                        st.success(f"Prodotto '{prod_scelto}' rimosso dalla spesa!")
-                        st.rerun()
-                    else:
-                        st.error("Prodotto non presente nella lista della spesa.")
-
-        # Azione 4: Elimina prodotto
-        elif scelta_azione == "🗑️ Elimina Prodotto":
-            lista_prodotti = df['Nome'].tolist()
-            prod_del = st.selectbox("Articolo da rimuovere dal magazzino", lista_prodotti)
-            
-            if st.button("Rimuovi Definitivamente"):
-                idx_del = df[df['Nome'] == prod_del].index[0] + 2
-                sh.delete_rows(int(idx_del))
-                st.success("Eliminato dal magazzino!")
+            if nuova_qty < 0:
+                st.error("⚠️ Errore: Scorte insufficienti!")
+            else:
+                sh.update_cell(riga, 3, nuova_qty)
+                st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                 st.rerun()
+
+        st.sidebar.markdown("---")
+
+        # 2. Sezione Spesa Ufficio
+        st.sidebar.subheader("🛒 Spesa Ufficio")
+        prod_spesa = st.sidebar.selectbox("Seleziona Prodotto", df['Nome'].tolist(), key="s_prod")
+        azione_spesa = st.sidebar.radio("Operazione", ["Aggiungi", "Sottrai"], key="s_azione")
+        qnt_spesa = st.sidebar.number_input("Quantità da variare", min_value=1, step=1, key="s_qnt")
+        
+        if st.sidebar.button("Conferma Spesa", key="s_btn"):
+            idx = df[df['Nome'] == prod_spesa].index[0]
+            qty_attuale = int(df.at[idx, 'Quantità'])
+            riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
+            
+            nuova_qty = qty_attuale + qnt_spesa if azione_spesa == "Aggiungi" else qty_attuale - qnt_spesa
+            
+            if nuova_qty < 0:
+                st.error("⚠️ Errore: Scorte insufficienti!")
+            else:
+                sh.update_cell(riga, 3, nuova_qty)
+                st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
+                st.rerun()
+
+        st.sidebar.markdown("---")
+
+        # 3. Nuovo Articolo
+        st.sidebar.subheader("➕ Nuovo Articolo")
+        with st.sidebar.form("add_form"):
+            n_cat = st.selectbox("Categoria", CATEGORIE, key="n_cat")
+            n_nome = st.text_input("Nome Prodotto", key="n_nome")
+            n_qty = st.number_input("Quantità Iniziale", min_value=0, key="n_qty")
+            
+            if st.form_submit_button("Salva nel Database"):
+                sh.append_row([n_cat, n_nome, n_qty])
+                st.success("Prodotto registrato!")
+                st.rerun()
+
+        st.sidebar.markdown("---")
+
+        # 4. Elimina prodotto
+        st.sidebar.subheader("🗑️ Elimina Prodotto")
+        prod_del = st.sidebar.selectbox("Articolo da rimuovere dal magazzino", df['Nome'].tolist(), key="del_prod")
+        
+        if st.sidebar.button("Rimuovi Definitivamente", key="del_btn"):
+            idx_del = df[df['Nome'] == prod_del].index[0] + 2
+            sh.delete_rows(int(idx_del))
+            st.success("Eliminato dal magazzino!")
+            st.rerun()
 
     else:
         st.warning("Il database è vuoto. Inserisci i titoli (Categoria, Nome, Quantità) nel Foglio Google.")
