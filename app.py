@@ -63,13 +63,15 @@ try:
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # A. SEGNALA COME ACQUISTATO (Rimuove dalla spesa)
-        with st.sidebar.expander("🛒 Segna come Acquistato"):
+        # A/B. GESTIONE SPESA UFFICIO (Uniti)
+        with st.sidebar.expander("🛒 Gestione Spesa Ufficio"):
+            # Parte 1: Segna come Acquistato
+            st.write("##### 🛒 Rimuovi prodotto acquistato")
             df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
             if not df_spesa.empty:
                 lista_spesa = df_spesa['Nome'].tolist()
-                prod_da_rimuovere = st.selectbox("Seleziona prodotto acquistato", lista_spesa)
-                if st.button("Rimuovi dalla Lista"):
+                prod_da_rimuovere = st.selectbox("Seleziona prodotto acquistato", lista_spesa, key="sel_acq")
+                if st.button("Rimuovi dalla Lista", key="btn_acq"):
                     idx_del = df[df['Nome'] == prod_da_rimuovere].index[0] + 2
                     sh.delete_rows(int(idx_del))
                     st.success("Prodotto acquistato e rimosso!")
@@ -77,11 +79,13 @@ try:
             else:
                 st.info("Nessun prodotto nella lista spesa.")
 
-        # B. AGGIUNGI RAPIDAMENTE ALLA SPESA UFFICIO
-        with st.sidebar.expander("🛒 Aggiungi alla Spesa Ufficio"):
-            with st.form("spesa_form"):
-                n_nome_spesa = st.text_input("Nome del prodotto mancante")
-                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1)
+            st.markdown("---")
+
+            # Parte 2: Aggiungi alla spesa
+            st.write("##### ➕ Aggiungi alla lista spesa")
+            with st.form("spesa_form_unito"):
+                n_nome_spesa = st.text_input("Nome del prodotto mancante", key="nome_spesa_u")
+                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1, key="qty_spesa_u")
                 
                 if st.form_submit_button("Salva nella Lista"):
                     sh.append_row(["Spesa Ufficio", n_nome_spesa, n_qty_spesa])
@@ -105,7 +109,6 @@ try:
                 if nuova_qty < 0:
                     st.error("⚠️ Errore: Scorte insufficienti!")
                 else:
-                    # AGGIORNAMENTO: La quantità è nella colonna 3 (C)
                     sh.update_cell(riga, 3, nuova_qty)
                     st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                     st.rerun()
@@ -118,7 +121,6 @@ try:
                 n_qty = st.number_input("Quantità Iniziale", min_value=0)
                 
                 if st.form_submit_button("Salva nel Database"):
-                    # Salvataggio ordine: Categoria, Nome, Quantità
                     sh.append_row([n_cat, n_nome, n_qty])
                     st.success("Prodotto registrato!")
                     st.rerun()
