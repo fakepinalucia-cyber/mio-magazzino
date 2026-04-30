@@ -3,6 +3,9 @@ import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 
+# URL del tuo logo
+LOGO_URL = "https://www.lenacustica.it/wp-content/uploads/2019/12/logo-lenacustica-300x70.png"
+
 # 1. CONNESSIONE
 def connect_to_sheet():
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -11,10 +14,14 @@ def connect_to_sheet():
     client = gspread.authorize(creds)
     return client.open("Dati_Magazzino").sheet1
 
-st.set_page_config(page_title="Magazzino Pro", layout="wide")
-st.title("📦 Gestione Magazzino")
+# Configurazione pagina con il tuo logo come icona tab
+st.set_page_config(page_title="Lenacustica - Magazzino", page_icon=LOGO_URL, layout="wide")
 
-# Aggiunta la categoria Spesa Ufficio
+# Visualizzazione Logo e Titolo
+st.image(LOGO_URL, width=250)
+st.title("Gestione Magazzino")
+
+# Categorie (inclusa Spesa Ufficio)
 CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro", "Spesa Ufficio"]
 
 try:
@@ -23,17 +30,16 @@ try:
     df = pd.DataFrame(rows)
 
     if not df.empty:
-        # Convertiamo la colonna Quantità in numeri interi in modo sicuro
+        # Conversione Quantità
         df['Quantità'] = pd.to_numeric(df['Quantità'], errors='coerce').fillna(0).astype(int)
 
-        # Aggiungiamo la colonna di stato con la soglia a 15
+        # Colonna di stato
         df['Stato'] = df['Quantità'].apply(lambda x: '⚠️ In esaurimento' if x <= 15 else '✅ Buono')
 
         # --- RICERCA VELOCE ---
         st.subheader("🔍 Cerca nel Magazzino")
         search_query = st.text_input("Inserisci il nome del prodotto da cercare", "").lower()
         
-        # Filtro ricerca
         mask = df.apply(lambda row: search_query in str(row['Nome']).lower(), axis=1)
         df_filtered = df[mask]
 
@@ -42,7 +48,7 @@ try:
         tab_titles = ["Tutti"] + CATEGORIE
         tabs = st.tabs(tab_titles)
 
-        # Tab "Tutti" (mostra la lista ordinata per Categoria e poi per Nome)
+        # Tab "Tutti" (Ordinato per Categoria e Nome)
         with tabs[0]:
             if not df_filtered.empty:
                 df_sorted_all = df_filtered.sort_values(by=['Categoria', 'Nome'], ascending=True)
@@ -50,7 +56,7 @@ try:
             else:
                 st.info("Nessun prodotto trovato.")
 
-        # Tab specifiche per categoria (con priorità in alto in base alle quantità)
+        # Tab specifiche per categoria
         for i, cat in enumerate(CATEGORIE):
             with tabs[i+1]:
                 df_cat = df_filtered[df_filtered['Categoria'] == cat]
@@ -60,12 +66,12 @@ try:
                 else:
                     st.info(f"Nessun prodotto nella categoria {cat}")
 
-        # --- SIDEBAR: TUTTI I COMANDI ---
+        # --- SIDEBAR: PANNELLO DI CONTROLLO ---
+        st.sidebar.image(LOGO_URL, width=200) # Logo anche nella sidebar
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # A/B. GESTIONE SPESA UFFICIO (Uniti)
+        # 1. GESTIONE SPESA UFFICIO (Unificato come richiesto)
         with st.sidebar.expander("🛒 Gestione Spesa Ufficio"):
-            # Parte 1: Segna come Acquistato
             st.write("##### 🛒 Rimuovi prodotto acquistato")
             df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
             if not df_spesa.empty:
@@ -74,25 +80,22 @@ try:
                 if st.button("Rimuovi dalla Lista", key="btn_acq"):
                     idx_del = df[df['Nome'] == prod_da_rimuovere].index[0] + 2
                     sh.delete_rows(int(idx_del))
-                    st.success("Prodotto acquistato e rimosso!")
+                    st.success("Acquistato e rimosso!")
                     st.rerun()
             else:
-                st.info("Nessun prodotto nella lista spesa.")
+                st.info("Lista spesa vuota.")
 
             st.markdown("---")
-
-            # Parte 2: Aggiungi alla spesa
             st.write("##### ➕ Aggiungi alla lista spesa")
             with st.form("spesa_form_unito"):
-                n_nome_spesa = st.text_input("Nome del prodotto mancante", key="nome_spesa_u")
-                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1, key="qty_spesa_u")
-                
+                n_nome_spesa = st.text_input("Nome del prodotto mancante")
+                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1)
                 if st.form_submit_button("Salva nella Lista"):
                     sh.append_row(["Spesa Ufficio", n_nome_spesa, n_qty_spesa])
-                    st.success("Prodotto aggiunto alla spesa!")
+                    st.success("Aggiunto alla spesa!")
                     st.rerun()
 
-        # C. AGGIORNA QUANTITÀ (CARICO/SCARICO)
+        # 2. AGGIORNA QUANTITÀ (CARICO/SCARICO)
         with st.sidebar.expander("🔄 Carico/Scarico Merce"):
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
@@ -102,32 +105,30 @@ try:
             if st.button("Conferma Movimento"):
                 idx = df[df['Nome'] == prod_scelto].index[0]
                 qty_attuale = int(df.at[idx, 'Quantità'])
-                riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
-                
+                riga = idx + 2
                 nuova_qty = qty_attuale + quantita_var if azione == "Aggiungi" else qty_attuale - quantita_var
                 
                 if nuova_qty < 0:
-                    st.error("⚠️ Errore: Scorte insufficienti!")
+                    st.error("⚠️ Scorte insufficienti!")
                 else:
                     sh.update_cell(riga, 3, nuova_qty)
-                    st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
+                    st.success(f"Aggiornato! Qty: {nuova_qty}")
                     st.rerun()
 
-        # D. AGGIUNGI NUOVO ARTICOLO
+        # 3. AGGIUNGI NUOVO ARTICOLO
         with st.sidebar.expander("➕ Nuovo Articolo"):
             with st.form("add_form"):
                 n_cat = st.selectbox("Categoria", CATEGORIE)
                 n_nome = st.text_input("Nome Prodotto")
                 n_qty = st.number_input("Quantità Iniziale", min_value=0)
-                
                 if st.form_submit_button("Salva nel Database"):
                     sh.append_row([n_cat, n_nome, n_qty])
-                    st.success("Prodotto registrato!")
+                    st.success("Registrato!")
                     st.rerun()
 
-        # E. ELIMINA ARTICOLO
+        # 4. ELIMINA ARTICOLO
         with st.sidebar.expander("🗑️ Elimina Prodotto"):
-            prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti, key="del_box")
+            prod_del = st.selectbox("Articolo da rimuovere", df['Nome'].tolist(), key="del_box")
             if st.button("Rimuovi Definitivamente"):
                 idx_del = df[df['Nome'] == prod_del].index[0] + 2
                 sh.delete_rows(int(idx_del))
@@ -135,7 +136,7 @@ try:
                 st.rerun()
 
     else:
-        st.warning("Il database è vuoto. Inserisci i titoli (Categoria, Nome, Quantità) nel Foglio Google.")
+        st.warning("Database vuoto.")
 
 except Exception as e:
     st.error(f"⚠️ Errore critico: {e}")
