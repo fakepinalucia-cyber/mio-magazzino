@@ -104,41 +104,32 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # Azione 3: Gestisci Spesa Ufficio (Semplificato)
+        # Azione 3: Gestisci Spesa Ufficio (Unico tasto intelligente)
         elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
-            st.markdown("**Aggiungi o Rimuovi dalla lista:**")
             
-            # Campo di testo unico per inserire o rimuovere l'articolo
-            nome_prodotto = st.text_input("Nome del prodotto", placeholder="Es. Caffè, Acqua...")
+            nome_prodotto = st.text_input("Nome del prodotto", placeholder="Es. Caffè, Acqua, Carta...")
             
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                if st.button("➕ Aggiungi"):
-                    if nome_prodotto.strip():
+            if st.button("🔄 Aggiorna Lista"):
+                if nome_prodotto.strip():
+                    prodotto_cercato = nome_prodotto.strip().lower()
+                    df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
+                    
+                    # Controlla se il prodotto esiste già nella Spesa Ufficio
+                    match = df_spesa[df_spesa['Nome'].astype(str).str.lower() == prodotto_cercato]
+                    
+                    if not match.empty:
+                        # Se esiste, lo rimuoviamo
+                        idx_del = match.index[0] + 2
+                        sh.delete_rows(int(idx_del))
+                        st.success(f"'{nome_prodotto.strip()}' rimosso dalla spesa!")
+                    else:
+                        # Se non esiste, lo aggiungiamo
                         sh.append_row(["Spesa Ufficio", nome_prodotto.strip(), 1])
-                        st.success("Prodotto aggiunto!")
-                        st.rerun()
-                    else:
-                        st.warning("Inserisci prima il nome del prodotto.")
+                        st.success(f"'{nome_prodotto.strip()}' aggiunto alla spesa!")
                         
-            with col2:
-                if st.button("🗑️ Rimuovi"):
-                    if nome_prodotto.strip():
-                        df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-                        # Cerca il prodotto (senza fare distinzione tra maiuscole e minuscole)
-                        match = df_spesa[df_spesa['Nome'].astype(str).str.lower() == nome_prodotto.strip().lower()]
-                        
-                        if not match.empty:
-                            # Ottieni l'indice della riga nel foglio
-                            idx_del = match.index[0] + 2
-                            sh.delete_rows(int(idx_del))
-                            st.success("Prodotto rimosso con successo!")
-                            st.rerun()
-                        else:
-                            st.error("Prodotto non trovato nella lista spesa.")
-                    else:
-                        st.warning("Inserisci prima il nome del prodotto.")
+                    st.rerun()
+                else:
+                    st.warning("Inserisci il nome del prodotto.")
 
         # Azione 4: Elimina prodotto
         elif scelta_azione == "🗑️ Elimina Prodotto":
