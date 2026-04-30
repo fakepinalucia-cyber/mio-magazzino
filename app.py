@@ -14,7 +14,6 @@ def connect_to_sheet():
 st.set_page_config(page_title="Magazzino Pro", layout="wide")
 st.title("📦 Gestione Magazzino")
 
-# Definiamo le categorie fisse
 CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro"]
 
 try:
@@ -23,73 +22,88 @@ try:
     df = pd.DataFrame(rows)
 
     if not df.empty:
-        # --- TAB PER CATEGORIA ---
-        st.subheader("📂 Filtra per Tipologia")
+        # Aggiungiamo la colonna di stato con la nuova soglia a 15
+        df['Stato'] = df['Quantità'].apply(lambda x: '⚠️ In esaurimento' if x <= 15 else '✅ Buono')
+
+        # --- RICERCA VELOCE ---
+        st.subheader("🔍 Cerca nel Magazzino")
+        search_query = st.text_input("Inserisci il nome del prodotto da cercare", "").lower()
         
-        # Creazione dei Tab
-        nomi_tab = ["Tutti"] + CATEGORIE
-        tabs = st.tabs(nomi_tab)
+        # Filtro ricerca
+        mask = df.apply(lambda row: search_query in str(row['Nome']).lower(), axis=1)
+        df_filtered = df[mask]
+
+        # --- SCHEDE (TAB) PER CATEGORIA ---
+        st.write("### 📋 Visualizza per Categoria")
+        tab_titles = ["Tutti"] + CATEGORIE
+        tabs = st.tabs(tab_titles)
+
+        # Funzione per mostrare la tabella con lo stato
+        def show_table(dataframe):
+            if not dataframe.empty:
+                st.dataframe(dataframe, use_container_width=True)
+            else:
+                st.info("Nessun prodotto trovato.")
 
         # Tab "Tutti"
         with tabs[0]:
-            st.dataframe(df, use_container_width=True)
+            show_table(df_filtered)
 
-        # Tab Dinamici per Categoria
+        # Tab specifiche per categoria
         for i, cat in enumerate(CATEGORIE):
             with tabs[i+1]:
-                df_filtrato = df[df['Categoria'] == cat]
-                if not df_filtrato.empty:
-                    st.dataframe(df_filtrato, use_container_width=True)
-                else:
-                    st.info(f"Nessun articolo nella categoria {cat}")
+                df_cat = df_filtered[df_filtered['Categoria'] == cat]
+                show_table(df_cat)
 
-        # --- SIDEBAR: COMANDI ---
+        # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # A. AGGIORNA QUANTITÀ
+        # A. AGGIORNA QUANTITÀ (CARICO/SCARICO)
         with st.sidebar.expander("🔄 Carico/Scarico Merce"):
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
             azione = st.radio("Operazione", ["Aggiungi", "Sottrai"])
-            quantita_var = st.number_input("Quantità", min_value=1, step=1)
+            quantita_var = st.number_input("Quantità da variare", min_value=1, step=1)
             
             if st.button("Conferma Movimento"):
                 idx = df[df['Nome'] == prod_scelto].index[0]
                 qty_attuale = int(df.at[idx, 'Quantità'])
-                riga = idx + 2 # +2 per compensare intestazione e indice 0
+                riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
                 
                 nuova_qty = qty_attuale + quantita_var if azione == "Aggiungi" else qty_attuale - quantita_var
                 
                 if nuova_qty < 0:
-                    st.error("⚠️ Attenzione: Scorta insufficiente!")
+                    st.error("⚠️ Errore: Scorte insufficienti!")
                 else:
-                    # AGGIORNAMENTO: La quantità è nella colonna 4 (D)
-                    sh.update_cell(riga, 4, nuova_qty)
+                    # AGGIORNAMENTO: La quantità è nella colonna 3 (C)
+                    sh.update_cell(riga, 3, nuova_qty)
                     st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                     st.rerun()
 
         # B. AGGIUNGI NUOVO ARTICOLO
         with st.sidebar.expander("➕ Nuovo Articolo"):
             with st.form("add_form"):
-                n_id = st.number_input("ID", min_value=1)
                 n_cat = st.selectbox("Categoria", CATEGORIE)
-                n_nome = st.text_input("Nome")
+                n_nome = st.text_input("Nome Prodotto")
                 n_qty = st.number_input("Quantità Iniziale", min_value=0)
-                if st.form_submit_button("Salva"):
-                    # Ordine: ID, Categoria, Nome, Quantità
-                    sh.append_row([n_id, n_cat, n_nome, n_qty])
+                
+                if st.form_submit_button("Salva nel Database"):
+                    # Salvataggio ordine: Categoria, Nome, Quantità
+                    sh.append_row([n_cat, n_nome, n_qty])
+                    st.success("Prodotto registrato!")
                     st.rerun()
 
-        # C. ELIMINA PRODOTTO
-        with st.sidebar.expander("🗑️ Elimina"):
-            prod_del = st.selectbox("Rimuovi prodotto", lista_prodotti, key="del")
-            if st.button("Elimina per sempre"):
+        # C. ELIMINA ARTICOLO
+        with st.sidebar.expander("🗑️ Elimina Prodotto"):
+            prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti, key="del_box")
+            if st.button("Rimuovi Definitivamente"):
                 idx_del = df[df['Nome'] == prod_del].index[0] + 2
                 sh.delete_rows(int(idx_del))
+                st.success("Eliminato!")
                 st.rerun()
 
     else:
-        st.warning("Assicurati che il foglio abbia le intestazioni: ID, Categoria, Nome, Quantità")
+        st.warning("Il database è vuoto. Inserisci i titoli (Categoria, Nome, Quantità) nel Foglio Google.")
 
 except Exception as e:
-    st.error(f"Si è verificato un errore: {e}")
+    st.error(f"⚠️ Errore critico: {e}")
