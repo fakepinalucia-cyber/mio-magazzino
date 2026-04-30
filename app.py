@@ -14,7 +14,8 @@ def connect_to_sheet():
 st.set_page_config(page_title="Magazzino Pro", layout="wide")
 st.title("📦 Gestione Magazzino")
 
-CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro"]
+# Aggiunta la categoria Spesa Ufficio
+CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro", "Spesa Ufficio"]
 
 try:
     sh = connect_to_sheet()
@@ -62,7 +63,18 @@ try:
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # A. AGGIORNA QUANTITÀ (CARICO/SCARICO)
+        # NUOVO: A. AGGIUNGI RAPIDAMENTE ALLA SPESA UFFICIO
+        with st.sidebar.expander("🛒 Aggiungi alla Spesa Ufficio"):
+            with st.form("spesa_form"):
+                n_nome_spesa = st.text_input("Nome del prodotto mancante")
+                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1)
+                
+                if st.form_submit_button("Salva nella Lista"):
+                    sh.append_row(["Spesa Ufficio", n_nome_spesa, n_qty_spesa])
+                    st.success("Prodotto aggiunto alla spesa!")
+                    st.rerun()
+
+        # B. AGGIORNA QUANTITÀ (CARICO/SCARICO)
         with st.sidebar.expander("🔄 Carico/Scarico Merce"):
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
@@ -84,7 +96,7 @@ try:
                     st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                     st.rerun()
 
-        # B. AGGIUNGI NUOVO ARTICOLO
+        # C. AGGIUNGI NUOVO ARTICOLO
         with st.sidebar.expander("➕ Nuovo Articolo"):
             with st.form("add_form"):
                 n_cat = st.selectbox("Categoria", CATEGORIE)
@@ -97,7 +109,7 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # C. ELIMINA ARTICOLO
+        # D. ELIMINA ARTICOLO
         with st.sidebar.expander("🗑️ Elimina Prodotto"):
             prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti, key="del_box")
             if st.button("Rimuovi Definitivamente"):
