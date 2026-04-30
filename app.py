@@ -3,7 +3,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 
-# 1. CONNESSIONE (Identica a prima)
+# 1. CONNESSIONE
 def connect_to_sheet():
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds_info = st.secrets["gcp_service_account"]
@@ -20,44 +20,58 @@ try:
     df = pd.DataFrame(rows)
 
     if not df.empty:
-        # --- BARRA DI RICERCA ---
+        # --- PARTE ALTA: RICERCA ---
         st.subheader("🔍 Cerca Prodotto")
-        search_query = st.text_input("Inserisci nome o ID per filtrare la tabella", "").lower()
-
-        # Filtro dinamico
+        search_query = st.text_input("Inserisci nome o ID per filtrare", "").lower()
         mask = df.apply(lambda row: search_query in str(row['Nome']).lower() or 
                                     search_query in str(row['ID']).lower(), axis=1)
         df_filtered = df[mask]
-
-        # Visualizzazione Tabella
         st.dataframe(df_filtered, use_container_width=True)
         
-        # --- SIDEBAR: AGGIUNGI E RIMUOVI ---
+        # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
 
-        # AGGIUNGI
-        with st.sidebar.expander("➕ Aggiungi Nuovo"):
-            with st.form("add_form"):
-                new_id = st.number_input("ID", min_value=1, step=1)
-                new_nome = st.text_input("Nome Prodotto")
-                new_qty = st.number_input("Quantità", min_value=0, step=1)
-                submitted = st.form_submit_button("Salva")
-                if submitted:
-                    sh.append_row([new_id, new_nome, new_qty])
-                    st.success("Aggiunto!")
+        # A. AGGIORNA QUANTITÀ (CARICO/SCARICO)
+        with st.sidebar.expander("🔄 Carico/Scarico Merce"):
+            lista_prodotti = df['Nome'].tolist()
+            prod_scelto = st.selectbox("Prodotto", lista_prodotti)
+            azione = st.radio("Cosa vuoi fare?", ["Aggiungi", "Sottrai"])
+            quantita_var = st.number_input("Quantità", min_value=1, step=1)
+            
+            if st.button("Conferma Movimento"):
+                idx = df[df['Nome'] == prod_scelto].index[0]
+                qty_attuale = int(df.at[idx, 'Quantità'])
+                riga = idx + 2
+                
+                nuova_qty = qty_attuale + quantita_var if azione == "Aggiungi" else qty_attuale - quantita_var
+                
+                if nuova_qty < 0:
+                    st.error("⚠️ Scorta insufficiente!")
+                else:
+                    sh.update_cell(riga, 3, nuova_qty) # Colonna 3 è la Quantità
+                    st.success(f"Fatto! Nuova Qty: {nuova_qty}")
                     st.rerun()
 
-        # RIMUOVI
-        with st.sidebar.expander("🗑️ Rimuovi Prodotto"):
-            lista_nomi = df['Nome'].tolist()
-            prodotto_da_eliminare = st.selectbox("Seleziona prodotto", lista_nomi)
-            if st.button("Elimina Definitivamente"):
-                index_to_remove = df[df['Nome'] == prodotto_da_eliminare].index[0] + 2
-                sh.delete_rows(int(index_to_remove))
-                st.success("Eliminato!")
+        # B. AGGIUNGI NUOVO ARTICOLO
+        with st.sidebar.expander("➕ Nuovo Articolo"):
+            with st.form("add_form"):
+                n_id = st.number_input("ID", min_value=1)
+                n_nome = st.text_input("Nome")
+                n_qty = st.number_input("Quantità Iniziale", min_value=0)
+                if st.form_submit_button("Salva"):
+                    sh.append_row([n_id, n_nome, n_qty])
+                    st.rerun()
+
+        # C. ELIMINA DEFINITIVAMENTE
+        with st.sidebar.expander("🗑️ Elimina"):
+            prod_del = st.selectbox("Seleziona da eliminare", lista_prodotti, key="del")
+            if st.button("Elimina per sempre"):
+                idx_del = df[df['Nome'] == prod_del].index[0] + 2
+                sh.delete_rows(int(idx_del))
                 st.rerun()
+
     else:
-        st.warning("Il foglio è vuoto. Aggiungi i titoli ID, Nome, Quantità su Google Sheets.")
+        st.warning("Foglio vuoto o intestazioni mancanti.")
 
 except Exception as e:
-    st.error(f"Si è verificato un errore: {e}")
+    st.error(f"Errore: {e}")
