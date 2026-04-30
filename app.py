@@ -104,7 +104,7 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # Azione 3: Gestisci Spesa Ufficio (Struttura unificata)
+        # Azione 3: Gestisci Spesa Ufficio (struttura identica al Carico/Scarico)
         elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
