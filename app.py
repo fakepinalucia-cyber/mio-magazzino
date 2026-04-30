@@ -14,8 +14,7 @@ def connect_to_sheet():
 st.set_page_config(page_title="Magazzino Pro", layout="wide")
 st.title("📦 Gestione Magazzino")
 
-# Aggiunta la categoria Spesa Ufficio
-CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro", "Spesa Ufficio"]
+CATEGORIE = ["Piramidale", "A Cuneo", "Elegance", "Pannelli Acustici", "Altro"]
 
 try:
     sh = connect_to_sheet()
@@ -85,29 +84,7 @@ try:
 
         st.sidebar.markdown("---")
 
-        # 2. Sezione Spesa Ufficio
-        st.sidebar.subheader("🛒 Spesa Ufficio")
-        prod_spesa = st.sidebar.selectbox("Seleziona Prodotto", df['Nome'].tolist(), key="s_prod")
-        azione_spesa = st.sidebar.radio("Operazione", ["Aggiungi", "Sottrai"], key="s_azione")
-        qnt_spesa = st.sidebar.number_input("Quantità da variare", min_value=1, step=1, key="s_qnt")
-        
-        if st.sidebar.button("Conferma Spesa", key="s_btn"):
-            idx = df[df['Nome'] == prod_spesa].index[0]
-            qty_attuale = int(df.at[idx, 'Quantità'])
-            riga = idx + 2 # +1 per header, +1 perché gspread parte da 1
-            
-            nuova_qty = qty_attuale + qnt_spesa if azione_spesa == "Aggiungi" else qty_attuale - qnt_spesa
-            
-            if nuova_qty < 0:
-                st.error("⚠️ Errore: Scorte insufficienti!")
-            else:
-                sh.update_cell(riga, 3, nuova_qty)
-                st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
-                st.rerun()
-
-        st.sidebar.markdown("---")
-
-        # 3. Nuovo Articolo
+        # 2. Nuovo Articolo
         st.sidebar.subheader("➕ Nuovo Articolo")
         with st.sidebar.form("add_form"):
             n_cat = st.selectbox("Categoria", CATEGORIE, key="n_cat")
@@ -121,7 +98,7 @@ try:
 
         st.sidebar.markdown("---")
 
-        # 4. Elimina prodotto
+        # 3. Elimina prodotto
         st.sidebar.subheader("🗑️ Elimina Prodotto")
         prod_del = st.sidebar.selectbox("Articolo da rimuovere dal magazzino", df['Nome'].tolist(), key="del_prod")
         
