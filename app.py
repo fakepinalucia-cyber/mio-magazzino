@@ -62,34 +62,17 @@ try:
 
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
+        
+        # Unico menu a tendina principale
+        scelta_azione = st.sidebar.selectbox("Scegli un'operazione", [
+            "🔄 Carico/Scarico Merce",
+            "➕ Nuovo Articolo",
+            "🛒 Gestisci Spesa Ufficio",
+            "🗑️ Elimina Prodotto"
+        ])
 
-        # A. SEGNALA COME ACQUISTATO (Rimuove dalla spesa)
-        with st.sidebar.expander("🛒 Segna come Acquistato"):
-            df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-            if not df_spesa.empty:
-                lista_spesa = df_spesa['Nome'].tolist()
-                prod_da_rimuovere = st.selectbox("Seleziona prodotto acquistato", lista_spesa)
-                if st.button("Rimuovi dalla Lista"):
-                    idx_del = df[df['Nome'] == prod_da_rimuovere].index[0] + 2
-                    sh.delete_rows(int(idx_del))
-                    st.success("Prodotto acquistato e rimosso!")
-                    st.rerun()
-            else:
-                st.info("Nessun prodotto nella lista spesa.")
-
-        # B. AGGIUNGI RAPIDAMENTE ALLA SPESA UFFICIO
-        with st.sidebar.expander("🛒 Aggiungi alla Spesa Ufficio"):
-            with st.form("spesa_form"):
-                n_nome_spesa = st.text_input("Nome del prodotto mancante")
-                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1)
-                
-                if st.form_submit_button("Salva nella Lista"):
-                    sh.append_row(["Spesa Ufficio", n_nome_spesa, n_qty_spesa])
-                    st.success("Prodotto aggiunto alla spesa!")
-                    st.rerun()
-
-        # C. AGGIORNA QUANTITÀ (CARICO/SCARICO)
-        with st.sidebar.expander("🔄 Carico/Scarico Merce"):
+        # Azione 1: Carico / Scarico Merce
+        if scelta_azione == "🔄 Carico/Scarico Merce":
             lista_prodotti = df['Nome'].tolist()
             prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
             azione = st.radio("Operazione", ["Aggiungi", "Sottrai"])
@@ -105,31 +88,67 @@ try:
                 if nuova_qty < 0:
                     st.error("⚠️ Errore: Scorte insufficienti!")
                 else:
-                    # AGGIORNAMENTO: La quantità è nella colonna 3 (C)
                     sh.update_cell(riga, 3, nuova_qty)
                     st.success(f"Aggiornato! Nuova Qty: {nuova_qty}")
                     st.rerun()
 
-        # D. AGGIUNGI NUOVO ARTICOLO
-        with st.sidebar.expander("➕ Nuovo Articolo"):
+        # Azione 2: Nuovo Articolo
+        elif scelta_azione == "➕ Nuovo Articolo":
             with st.form("add_form"):
                 n_cat = st.selectbox("Categoria", CATEGORIE)
                 n_nome = st.text_input("Nome Prodotto")
                 n_qty = st.number_input("Quantità Iniziale", min_value=0)
                 
                 if st.form_submit_button("Salva nel Database"):
-                    # Salvataggio ordine: Categoria, Nome, Quantità
                     sh.append_row([n_cat, n_nome, n_qty])
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # E. ELIMINA ARTICOLO
-        with st.sidebar.expander("🗑️ Elimina Prodotto"):
-            prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti, key="del_box")
+        # Azione 3: Gestisci Spesa Ufficio (Semplificato)
+        elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
+            st.markdown("**Aggiungi o Rimuovi dalla lista:**")
+            
+            # Campo di testo unico per inserire o rimuovere l'articolo
+            nome_prodotto = st.text_input("Nome del prodotto", placeholder="Es. Caffè, Acqua...")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("➕ Aggiungi"):
+                    if nome_prodotto.strip():
+                        sh.append_row(["Spesa Ufficio", nome_prodotto.strip(), 1])
+                        st.success("Prodotto aggiunto!")
+                        st.rerun()
+                    else:
+                        st.warning("Inserisci prima il nome del prodotto.")
+                        
+            with col2:
+                if st.button("🗑️ Rimuovi"):
+                    if nome_prodotto.strip():
+                        df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
+                        # Cerca il prodotto (senza fare distinzione tra maiuscole e minuscole)
+                        match = df_spesa[df_spesa['Nome'].astype(str).str.lower() == nome_prodotto.strip().lower()]
+                        
+                        if not match.empty:
+                            # Ottieni l'indice della riga nel foglio
+                            idx_del = match.index[0] + 2
+                            sh.delete_rows(int(idx_del))
+                            st.success("Prodotto rimosso con successo!")
+                            st.rerun()
+                        else:
+                            st.error("Prodotto non trovato nella lista spesa.")
+                    else:
+                        st.warning("Inserisci prima il nome del prodotto.")
+
+        # Azione 4: Elimina prodotto
+        elif scelta_azione == "🗑️ Elimina Prodotto":
+            lista_prodotti = df['Nome'].tolist()
+            prod_del = st.selectbox("Articolo da rimuovere dal magazzino", lista_prodotti)
+            
             if st.button("Rimuovi Definitivamente"):
                 idx_del = df[df['Nome'] == prod_del].index[0] + 2
                 sh.delete_rows(int(idx_del))
-                st.success("Eliminato!")
+                st.success("Eliminato dal magazzino!")
                 st.rerun()
 
     else:
