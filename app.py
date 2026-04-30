@@ -22,6 +22,9 @@ try:
     df = pd.DataFrame(rows)
 
     if not df.empty:
+        # CORREZIONE: Convertiamo la colonna Quantità in numeri interi in modo sicuro
+        df['Quantità'] = pd.to_numeric(df['Quantità'], errors='coerce').fillna(0).astype(int)
+
         # Aggiungiamo la colonna di stato con la nuova soglia a 15
         df['Stato'] = df['Quantità'].apply(lambda x: '⚠️ In esaurimento' if x <= 15 else '✅ Buono')
 
