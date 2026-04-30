@@ -104,44 +104,30 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # Azione 3: Gestisci Spesa Ufficio (Aggiungi o Rimuovi)
+        # Azione 3: Gestisci Spesa Ufficio (Struttura unificata)
         elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
+            lista_prodotti = df['Nome'].tolist()
+            prod_scelto = st.selectbox("Seleziona Prodotto", lista_prodotti)
             
-            azione = st.radio("Seleziona azione", ["Aggiungi alla lista", "Segna come acquistato"])
-            
-            if azione == "Aggiungi alla lista":
-                nome_prodotto = st.text_input("Nome del prodotto")
-                qty_prodotto = st.number_input("Quantità", min_value=1, value=1, step=1)
-            else: # Segna come acquistato
-                df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-                if not df_spesa.empty:
-                    lista_spesa = df_spesa['Nome'].tolist()
-                    nome_prodotto = st.selectbox("Seleziona il prodotto comprato", lista_spesa)
-                    qty_prodotto = 1
-                else:
-                    nome_prodotto = None
-                    st.info("La lista della spesa è vuota.")
+            azione = st.radio("Operazione", ["Aggiungi", "Rimuovi"])
+            quantita = st.number_input("Quantità", min_value=1, value=1, step=1)
             
             if st.button("Conferma Operazione"):
-                if azione == "Aggiungi la lista":
-                    if nome_prodotto and nome_prodotto.strip():
-                        sh.append_row(["Spesa Ufficio", nome_prodotto.strip(), int(qty_prodotto)])
-                        st.success(f"Prodotto '{nome_prodotto.strip()}' aggiunto alla spesa!")
+                if azione == "Aggiungi":
+                    sh.append_row(["Spesa Ufficio", prod_scelto, int(quantita)])
+                    st.success(f"Prodotto '{prod_scelto}' aggiunto alla spesa!")
+                    st.rerun()
+                else: # Rimuovi
+                    df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
+                    match = df_spesa[df_spesa['Nome'] == prod_scelto]
+                    
+                    if not match.empty:
+                        idx_del = match.index[0] + 2
+                        sh.delete_rows(int(idx_del))
+                        st.success(f"Prodotto '{prod_scelto}' rimosso dalla spesa!")
                         st.rerun()
                     else:
-                        st.warning("Inserisci il nome del prodotto.")
-                else: # Rimuovi
-                    if nome_prodotto:
-                        df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-                        match = df_spesa[df_spesa['Nome'] == nome_prodotto]
-                        
-                        if not match.empty:
-                            idx_del = match.index[0] + 2
-                            sh.delete_rows(int(idx_del))
-                            st.success(f"Prodotto '{nome_prodotto}' rimosso dalla spesa!")
-                            st.rerun()
-                    else:
-                        st.warning("Seleziona un prodotto da rimuovere.")
+                        st.error("Prodotto non presente nella lista della spesa.")
 
         # Azione 4: Elimina prodotto
         elif scelta_azione == "🗑️ Elimina Prodotto":
