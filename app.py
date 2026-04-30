@@ -63,7 +63,7 @@ try:
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
         
-        # Unico menu a tendina principale
+        # Sostituiamo gli expander con un unico menu a tendina principale
         scelta_azione = st.sidebar.selectbox("Scegli un'operazione", [
             "🔄 Carico/Scarico Merce",
             "➕ Nuovo Articolo",
@@ -104,46 +104,49 @@ try:
                     st.success("Prodotto registrato!")
                     st.rerun()
 
-        # Azione 3: Gestisci Spesa Ufficio (Unico tasto intelligente)
+        # Azione 3: Gestione Spesa Ufficio (Aggiungi e Rimuovi integrati)
         elif scelta_azione == "🛒 Gestisci Spesa Ufficio":
             
-            nome_prodotto = st.text_input("Nome del prodotto", placeholder="Es. Caffè, Acqua, Carta...")
-            
-            if st.button("🔄 Aggiorna Lista"):
-                if nome_prodotto.strip():
-                    prodotto_cercato = nome_prodotto.strip().lower()
-                    df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
-                    
-                    # Controlla se il prodotto esiste già nella Spesa Ufficio
-                    match = df_spesa[df_spesa['Nome'].astype(str).str.lower() == prodotto_cercato]
-                    
-                    if not match.empty:
-                        # Se esiste, lo rimuoviamo
-                        idx_del = match.index[0] + 2
-                        sh.delete_rows(int(idx_del))
-                        st.success(f"'{nome_prodotto.strip()}' rimosso dalla spesa!")
-                    else:
-                        # Se non esiste, lo aggiungiamo
-                        sh.append_row(["Spesa Ufficio", nome_prodotto.strip(), 1])
-                        st.success(f"'{nome_prodotto.strip()}' aggiunto alla spesa!")
-                        
+            # Sotto-sezione Aggiunta
+            st.markdown("**Aggiungi alla lista**")
+            with st.form("spesa_form"):
+                n_nome_spesa = st.text_input("Nome del prodotto mancante")
+                n_qty_spesa = st.number_input("Quantità da acquistare", min_value=1, value=1, step=1)
+                
+                if st.form_submit_button("Salva nella Lista"):
+                    sh.append_row(["Spesa Ufficio", n_nome_spesa, n_qty_spesa])
+                    st.success("Prodotto aggiunto alla spesa!")
                     st.rerun()
-                else:
-                    st.warning("Inserisci il nome del prodotto.")
+            
+            st.write("---")
+            
+            # Sotto-sezione Rimozione
+            st.markdown("**Segna come acquistato**")
+            df_spesa = df[df['Categoria'] == "Spesa Ufficio"]
+            if not df_spesa.empty:
+                lista_spesa = df_spesa['Nome'].tolist()
+                prod_da_rimuovere = st.selectbox("Seleziona prodotto acquistato", lista_spesa)
+                if st.button("Rimuovi dalla Lista"):
+                    idx_del = df[df['Nome'] == prod_da_rimuovere].index[0] + 2
+                    sh.delete_rows(int(idx_del))
+                    st.success("Prodotto acquistato e rimosso!")
+                    st.rerun()
+            else:
+                st.info("Nessun prodotto nella lista spesa.")
 
         # Azione 4: Elimina prodotto
         elif scelta_azione == "🗑️ Elimina Prodotto":
             lista_prodotti = df['Nome'].tolist()
-            prod_del = st.selectbox("Articolo da rimuovere dal magazzino", lista_prodotti)
+            prod_del = st.selectbox("Articolo da rimuovere", lista_prodotti)
             
             if st.button("Rimuovi Definitivamente"):
                 idx_del = df[df['Nome'] == prod_del].index[0] + 2
                 sh.delete_rows(int(idx_del))
-                st.success("Eliminato dal magazzino!")
+                st.success("Eliminato!")
                 st.rerun()
 
     else:
-        st.warning("Il database è vuoto. Inserisci i titoli (Categoria, Nome, Quantità) nel Foglio Google.")
+        st.warning("Il database è vuoto. Inserisci i titoli (Categoria, Nome, Quantità) nel Foggle Google.")
 
 except Exception as e:
     st.error(f"⚠️ Errore critico: {e}")
