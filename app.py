@@ -22,10 +22,10 @@ try:
     df = pd.DataFrame(rows)
 
     if not df.empty:
-        # CORREZIONE: Convertiamo la colonna Quantità in numeri interi in modo sicuro
+        # Convertiamo la colonna Quantità in numeri interi in modo sicuro
         df['Quantità'] = pd.to_numeric(df['Quantità'], errors='coerce').fillna(0).astype(int)
 
-        # Aggiungiamo la colonna di stato con la nuova soglia a 15
+        # Aggiungiamo la colonna di stato con la soglia a 15
         df['Stato'] = df['Quantità'].apply(lambda x: '⚠️ In esaurimento' if x <= 15 else '✅ Buono')
 
         # --- RICERCA VELOCE ---
@@ -41,10 +41,12 @@ try:
         tab_titles = ["Tutti"] + CATEGORIE
         tabs = st.tabs(tab_titles)
 
-        # Funzione per mostrare la tabella con lo stato
+        # Funzione per mostrare la tabella con priorità in alto
         def show_table(dataframe):
             if not dataframe.empty:
-                st.dataframe(dataframe, use_container_width=True)
+                # Ordiniamo per Quantità crescente (le quantità minori saranno in cima)
+                df_sorted = dataframe.sort_values(by='Quantità', ascending=True)
+                st.dataframe(df_sorted, use_container_width=True)
             else:
                 st.info("Nessun prodotto trovato.")
 
