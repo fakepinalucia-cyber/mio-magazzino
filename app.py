@@ -25,13 +25,37 @@ try:
         st.subheader("📊 Inventario Attuale")
         st.dataframe(df, use_container_width=True)
         
-        # Sidebar per aggiungere prodotti
-        st.sidebar.header("➕ Aggiungi Prodotto")
-        with st.sidebar.form("add_form"):
-            new_id = st.number_input("ID", min_value=1, step=1)
-            new_nome = st.text_input("Nome Prodotto")
-            new_qty = st.number_input("Quantità", min_value=0, step=1)
-            submitted = st.form_submit_button("Salva nel Foglio")
+        # --- SIDEBAR: GESTIONE PRODOTTI ---
+        st.sidebar.header("⚙️ Gestione Magazzino")
+
+        # Sezione AGGIUNGI
+        with st.sidebar.expander("➕ Aggiungi Nuovo"):
+            with st.form("add_form"):
+                new_id = st.number_input("ID", min_value=1, step=1)
+                new_nome = st.text_input("Nome Prodotto")
+                new_qty = st.number_input("Quantità", min_value=0, step=1)
+                submitted = st.form_submit_button("Salva")
+                
+                if submitted:
+                    sh.append_row([new_id, new_nome, new_qty])
+                    st.success("Aggiunto!")
+                    st.rerun() # Ricarica l'app per aggiornare la tabella
+
+        # Sezione RIMUOVI
+        with st.sidebar.expander("🗑️ Rimuovi Prodotto"):
+            # Crea una lista di nomi per il menu a tendina
+            lista_nomi = df['Nome'].tolist()
+            prodotto_da_eliminare = st.selectbox("Seleziona prodotto da eliminare", lista_nomi)
+            
+            if st.button("Elimina Definitivamente"):
+                try:
+                    # Trova la riga corrispondente (aggiungiamo 2 perché il foglio Google parte da 1 e ha l'intestazione)
+                    index_to_remove = df[df['Nome'] == prodotto_da_eliminare].index[0] + 2
+                    sh.delete_rows(int(index_to_remove))
+                    st.success(f"{prodotto_da_eliminare} eliminato!")
+                    st.rerun() # Ricarica l'app
+                except Exception as e:
+                    st.error(f"Errore durante l'eliminazione: {e}")
             
             if submitted:
                 sh.append_row([new_id, new_nome, new_qty])
