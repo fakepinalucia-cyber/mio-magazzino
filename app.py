@@ -41,10 +41,11 @@ try:
         tab_titles = ["Tutti"] + CATEGORIE
         tabs = st.tabs(tab_titles)
 
-        # Tab "Tutti" (mostra la lista normale)
+        # Tab "Tutti" (mostra la lista in ordine alfabetico per Nome)
         with tabs[0]:
             if not df_filtered.empty:
-                st.dataframe(df_filtered, use_container_width=True)
+                df_sorted_all = df_filtered.sort_values(by='Nome', ascending=True)
+                st.dataframe(df_sorted_all, use_container_width=True)
             else:
                 st.info("Nessun prodotto trovato.")
 
