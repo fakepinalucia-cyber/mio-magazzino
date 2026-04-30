@@ -41,24 +41,22 @@ try:
         tab_titles = ["Tutti"] + CATEGORIE
         tabs = st.tabs(tab_titles)
 
-        # Funzione per mostrare la tabella con priorità in alto
-        def show_table(dataframe):
-            if not dataframe.empty:
-                # Ordiniamo per Quantità crescente (le quantità minori saranno in cima)
-                df_sorted = dataframe.sort_values(by='Quantità', ascending=True)
-                st.dataframe(df_sorted, use_container_width=True)
+        # Tab "Tutti" (mostra la lista normale)
+        with tabs[0]:
+            if not df_filtered.empty:
+                st.dataframe(df_filtered, use_container_width=True)
             else:
                 st.info("Nessun prodotto trovato.")
 
-        # Tab "Tutti"
-        with tabs[0]:
-            show_table(df_filtered)
-
-        # Tab specifiche per categoria
+        # Tab specifiche per categoria (con priorità in alto in base alle quantità)
         for i, cat in enumerate(CATEGORIE):
             with tabs[i+1]:
                 df_cat = df_filtered[df_filtered['Categoria'] == cat]
-                show_table(df_cat)
+                if not df_cat.empty:
+                    df_sorted = df_cat.sort_values(by='Quantità', ascending=True)
+                    st.dataframe(df_sorted, use_container_width=True)
+                else:
+                    st.info(f"Nessun prodotto nella categoria {cat}")
 
         # --- SIDEBAR: TUTTI I COMANDI ---
         st.sidebar.header("⚙️ Pannello di Controllo")
